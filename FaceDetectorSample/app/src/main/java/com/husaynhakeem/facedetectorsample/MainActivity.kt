@@ -15,11 +15,12 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestMultiple
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.camera.view.PreviewView.StreamState
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import kotlinx.android.synthetic.main.activity_main.*
+//import kotlinx.android.synthetic.main.activity_main.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -29,7 +30,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cameraProvider: ProcessCameraProvider
     private lateinit var executor: ExecutorService
     private lateinit var imageAnalysis: ImageAnalysis
-
+    private lateinit var viewfinder: PreviewView
+    private lateinit var faceBoundsOverlay: FaceBoundsOverlay
     /**
      * The display listener is used to update the ImageAnalysis's target rotation for cases where the
      * Activity isn't recreated after a device rotation, for example a 180 degree rotation from
@@ -49,7 +51,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(bundle: Bundle?) {
         super.onCreate(bundle)
         setContentView(R.layout.activity_main)
-
+        viewfinder = findViewById(R.id.viewfinder)
+        faceBoundsOverlay = findViewById(R.id.faceBoundsOverlay)
         // Initialize analysis executor
         executor = Executors.newSingleThreadExecutor()
 
@@ -126,7 +129,7 @@ class MainActivity : AppCompatActivity() {
         val preview = Preview.Builder()
             .setTargetAspectRatio(AspectRatio.RATIO_4_3)
             .build()
-        preview.setSurfaceProvider(viewfinder.createSurfaceProvider())
+        preview.setSurfaceProvider(viewfinder!!.getSurfaceProvider())
 
         val lensFacing = getCameraLensFacing(cameraProvider)
         val cameraSelector = CameraSelector.Builder()
@@ -148,13 +151,13 @@ class MainActivity : AppCompatActivity() {
      * streaming.
      */
     private fun setFaceDetector(imageAnalysis: ImageAnalysis, lensFacing: Int) {
-        viewfinder.previewStreamState.observe(this, object : Observer<StreamState> {
+        viewfinder!!.previewStreamState.observe(this, object : Observer<StreamState> {
             override fun onChanged(streamState: StreamState?) {
                 if (streamState != StreamState.STREAMING) {
                     return
                 }
 
-                val preview = viewfinder.getChildAt(0)
+                val preview = viewfinder!!.getChildAt(0)
                 var width = preview.width * preview.scaleX
                 var height = preview.height * preview.scaleY
                 val rotation = preview.display.rotation
@@ -168,7 +171,7 @@ class MainActivity : AppCompatActivity() {
                     executor,
                     createFaceDetector(width.toInt(), height.toInt(), lensFacing)
                 )
-                viewfinder.previewStreamState.removeObserver(this)
+                viewfinder!!.previewStreamState.removeObserver(this)
             }
         })
     }
@@ -182,7 +185,7 @@ class MainActivity : AppCompatActivity() {
         val faceDetector = AnalysisFaceDetector(viewfinderWidth, viewfinderHeight, isFrontLens)
         faceDetector.listener = object : AnalysisFaceDetector.Listener {
             override fun onFacesDetected(faceBounds: List<RectF>) {
-                faceBoundsOverlay.post { faceBoundsOverlay.drawFaceBounds(faceBounds) }
+                faceBoundsOverlay!!.post { faceBoundsOverlay!!.drawFaceBounds(faceBounds) }
             }
 
             override fun onError(exception: Exception) {
